@@ -69,7 +69,23 @@ class MatchAll(Query):
     def __or__(self, other):
         return self
     __ror__ = __or__
+
+    def __invert__(self):
+        return MatchNone()
 EMPTY_QUERY = MatchAll()
+
+class MatchNone(Query):
+    name = 'match_none'
+    def __add__(self, other):
+        return self
+    __and__ = __rand__ = __radd__ = __add__
+
+    def __or__(self, other):
+        return other._clone()
+    __ror__ = __or__
+
+    def __invert__(self):
+        return MatchAll()
 
 class Bool(Query):
     name = 'bool'
@@ -94,11 +110,10 @@ class Bool(Query):
 
     def __or__(self, other):
         for q in (self, other):
-            if isinstance(q, Bool) and not any((q.must, q.must_not, q.filter)):
-                # TODO: take minimum_should_match into account
+            if isinstance(q, Bool) and not any((q.must, q.must_not, q.filter, getattr(q, 'minimum_should_match', None))):
                 other = self if q is other else other
                 q = q._clone()
-                if isinstance(other, Bool) and not any((other.must, other.must_not, other.filter)):
+                if isinstance(other, Bool) and not any((other.must, other.must_not, other.filter, getattr(other, 'minimum_should_match', None))):
                     q.should.extend(other.should)
                 else:
                     q.should.append(other)
@@ -133,6 +148,11 @@ class Bool(Query):
             q.must_not += other.must_not
             q.filter += other.filter
             q.should = []
+
+            # reset minimum_should_match as it will get calculated below
+            if 'minimum_should_match' in q._params:
+                del q._params['minimum_should_match']
+
             for qx in (self, other):
                 # TODO: percentages will fail here
                 min_should_match = qx._min_should_match
@@ -196,6 +216,8 @@ class Indices(Query):
     name = 'indices'
     _param_defs = {'query': {'type': 'query'}, 'no_match_query': {'type': 'query'}}
 
+class Percolate(Query):
+    name = 'percolate'
 
 # relationship queries
 class Nested(Query):

@@ -11,6 +11,9 @@ Changelog
   whole data dict for the aggregation, not just the ``buckets``. This is
   a backwards incompatible change for custom aggregations that redefine that
   method.
+* ``DocType.update`` now supports ``refresh`` kwarg
+* ``DslBase._clone`` now produces a shallow copy, this means that modifying an
+  existing query can have effects on existing ``Search`` objects.
 
 6.1.0 (2018-01-09)
 ------------------
